@@ -18,46 +18,19 @@ function suggest_friends(year_diff, dbname) {
     db = db.getSiblingDB(dbname);
 
     let pairs = [];
-
-    let pipeline = [
-        // Candidate A: male users
-        { $match: { gender: "male" } },
-        {
-            $lookup: {
-                from: "users",
-                let: { 
-                    hometown: "$hometown.city",  // A's hometown city
-                    a_year: "$YOB",
-                    a_friends: "$friends",
-                    a_id: "$user_id"
-                },
-                pipeline: [
-                    // Candidate B: female users
-                    { $match: { gender: "female" } },
-                    // Both users must share the same hometown city.
-                    { $match: { $expr: { $eq: ["$hometown.city", "$$hometown"] } } },
-                    // Difference in YOB must be less than year_diff.
-                    { $match: { 
-                        $expr: { 
-                            $lt: [ { $abs: { $subtract: ["$YOB", "$$a_year"] } }, year_diff ]
-                        }
-                    } },
-                    // Ensure user B is not already in user A's friends array.
-                    { $match: { 
-                        $expr: { 
-                            $eq: [ { $in: ["$user_id", "$$a_friends"] }, false ]
-                        }
-                    } }
-                ],
-                as: "femaleMatches"
-            }
-        },
-        { $unwind: "$femaleMatches" },
-        { $project: { _id: 0, pair: ["$user_id", "$femaleMatches.user_id"] } }
-    ];
-
-    let results = db.users.aggregate(pipeline).toArray();
-    pairs = results.map(doc => doc.pair);
+    // TODO: implement suggest friends
+    db.users.find({ gender: "male" }).forEach((maleUser) => {
+        db.users.find({
+            gender: "female",
+            "hometown.city": maleUser.hometown.city,
+            YOB: { $gt: maleUser.YOB - year_diff, $lt: maleUser.YOB + year_diff },
+        }).forEach((femaleUser) => {
+            if (maleUser.friends.indexOf(femaleUser.user_id) === -1 && femaleUser.friends.indexOf(maleUser.user_id) === -1) {
+                pairs.push([maleUser.user_id, femaleUser.user_id]);
+            } // Check if not friends already
+        });
+    });
 
     return pairs;
 }
+
