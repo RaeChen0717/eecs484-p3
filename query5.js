@@ -10,8 +10,56 @@
 function oldest_friend(dbname) {
     db = db.getSiblingDB(dbname);
 
-    let results = {};
-    // TODO: implement oldest friends
+    // Retrieve all users.
+    let users = db.users.find().toArray();
+    let userMap = {};
+    users.forEach(function(user) {
+        userMap[user.user_id] = user;
+    });
 
-    return results;
+    // Build a bidirectional friendship mapping.
+    let friendship = {};
+    users.forEach(function(user) {
+        friendship[user.user_id] = [];
+    });
+    // Each user's friends array lists only friends with larger user_ids.
+    // We add the reverse relation so every friendship is considered.
+    users.forEach(function(user) {
+        if (user.friends && Array.isArray(user.friends)) {
+            user.friends.forEach(function(friendId) {
+                friendship[user.user_id].push(friendId);
+                if (!friendship[friendId]) {
+                    friendship[friendId] = [];
+                }
+                if (friendship[friendId].indexOf(user.user_id) === -1) {
+                    friendship[friendId].push(user.user_id);
+                }
+            });
+        }
+    });
+
+    let result = {};
+    // For each user, find the oldest friend.
+    for (let uid in friendship) {
+        let friendList = friendship[uid];
+        if (friendList.length > 0) {
+            let oldest = null;
+            friendList.forEach(function(fid) {
+                let friendDoc = userMap[fid];
+                if (!friendDoc) return;
+                if (oldest === null) {
+                    oldest = friendDoc;
+                } else {
+                    if (friendDoc.YOB < oldest.YOB) {
+                        oldest = friendDoc;
+                    } else if (friendDoc.YOB === oldest.YOB && friendDoc.user_id < oldest.user_id) {
+                        oldest = friendDoc;
+                    }
+                }
+            });
+            result[uid] = oldest.user_id;
+        }
+    }
+    
+    return result;
 }

@@ -5,8 +5,6 @@
 function find_average_friendcount(dbname) {
     db = db.getSiblingDB(dbname);
 
-    // TODO: calculate the average friend count
-
     let result = db.users.aggregate([
         { $project: { friendCount: { $size: "$friends" } } },
         { $group: { _id: null, avgFriendCount: { $avg: "$friendCount" } } }
