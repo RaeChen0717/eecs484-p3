@@ -7,5 +7,10 @@ function find_average_friendcount(dbname) {
 
     // TODO: calculate the average friend count
 
-    return 0;
+    let result = db.users.aggregate([
+        { $project: { friendCount: { $size: "$friends" } } },
+        { $group: { _id: null, avgFriendCount: { $avg: "$friendCount" } } }
+    ]).toArray();
+    
+    return result.length > 0 ? result[0].avgFriendCount : 0;
 }

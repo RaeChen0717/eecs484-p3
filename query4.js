@@ -18,7 +18,46 @@ function suggest_friends(year_diff, dbname) {
     db = db.getSiblingDB(dbname);
 
     let pairs = [];
+
     // TODO: implement suggest friends
+    let pipeline = [
+        { $match: { gender: "male" } },
+        {
+            $lookup: {
+                from: "users",
+                let: { 
+                    city: "$hometown_city", 
+                    a_year: "$Year_Of_Birth", 
+                    a_friends: "$friends", 
+                    a_id: "$user_id"
+                },
+                pipeline: [
+                    { $match: { gender: "female" } },
+                    { $match: { $expr: { $eq: ["$hometown_city", "$$city"] } } },
+                    { $match: { 
+                        $expr: { 
+                            $lt: [ { $abs: { $subtract: ["$Year_Of_Birth", "$$a_year"] } }, year_diff ] 
+                        } 
+                    } },
+                    { $match: { 
+                        $expr: { 
+                            $eq: [ { $in: ["$user_id", "$$a_friends"] }, false ]
+                        } 
+                    } }
+                ],
+                as: "femaleMatches"
+            }
+        },
+        { $unwind: "$femaleMatches" },
+        {
+            $project: {
+                _id: 0,
+                pair: ["$user_id", "$femaleMatches.user_id"]
+            }
+        }
+    ];
+    let results = db.users.aggregate(pipeline).toArray();
+    pairs = results.map(doc => doc.pair);
 
     return pairs;
 }
